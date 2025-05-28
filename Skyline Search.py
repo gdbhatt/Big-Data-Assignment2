@@ -2,191 +2,152 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# SKYLINE SEARCH WITH THE SELECTION OF THE GIVEN CITY1 DATASET
+# SKYLINE SEARCH IMPLEMENTATION  USING CITY1 DATASET
 
-
-
-# With the objective to find skyline points, this code file enables algorithms outlined below : 
-    
-# Sequential Scan Method , Branch and Bound Skyline(BBS) with the use of R tree and BBS with Divide and Conquer
-
+# This program applies three algorithms to identify skyline points in a real estate dataset.
+# These skyline points represent homes that are optimal in terms of both cost and size (i.e., cheaper and larger).
+# The three methods implemented as per the requirements are: Sequential Scan Method, Branch and Bound Skyline (BBS), BBS with Divide and Conquer
 
 import pandas as pd
 import time
-from rtree import index  
 
-
-# Loading the  selected dataset city1 for this particular implementation where the 2D points are stuctured as follows:
-#  cityid , cost (x) and size (y)
-
+# Loading the selected dataset which is city1
+# Each row represents a home with ID, cost (x), and size (y)
 df = pd.read_csv("city1.txt", sep=" ", header=None, names=["id", "x", "y"])
 
-
-
-# IMPLEMENTATION OF SEQUENTIAL SCAN METHOD 
-
-# To check whether one point is dominated by another individual point or not. A point is dominated by another point in this when:
-# Cost(x) is less and size(y) is larger. (cheaper and bigger)
-
+# Defining the function to check whether point p1 is dominated by point p2
+# A point is dominated when another point is cheaper and at least as large
 def is_dominated(p1, p2):
     return (p2["x"] <= p1["x"] and p2["y"] >= p1["y"]) and (p2["x"] < p1["x"] or p2["y"] > p1["y"])
 
+# IMPLEMENTATION USING SEQUENTIAL SCAN METHOD
 
-# Computation of skyline using sequential scan
-
+# Computing skyline using the Sequential Scan Method
+# Looping through each point and checking if it is dominated by any other point
 def skyline_sequential(df):
-    
-    
-    # List for storing non-dominated points
-    
-    skyline = [] 
-    
-    # Looping across each individual point in the dataset
-    
+    # Creating a list to store non-dominated points
+    skyline = []
+
+    # Iterating over each point in the dataset
     for i, p in df.iterrows():
-        
-        # p is initially not dominated
+        # Initially assuming the point is not dominated
         dominated = False
-        
-        # Comparison between every point
-        for j, q in df.iterrows():  
-            
-            # Checking if the point is dominated
+
+        # Comparing the current point with every other point
+        for j, q in df.iterrows():
+            # Marking the point as dominated if conditions are met
             if i != j and is_dominated(p, q):
                 dominated = True
-                
-                # stopping when p is dominated
-                break  
-        if not dominated:
-            
-            # Adding to skyline as point is not dominated
-            skyline.append(p)
-    return pd.DataFrame(skyline)
-
-# IMPLEMENTATION OF BRANCH AND BOUND SKYLINE (BBS)
-
-# Constructing R-tree using the dataset  2D points
-
-def create_rtree(df):
-    p = index.Property()
-    p.dimension = 2  # 2 dimensional points
-    idx = index.Index(properties=p)
-    for i, row in df.iterrows():
-        
-        # Inserting points into  R-tree with the structure (x, y, x, y)
-        
-        idx.insert(i, (row["x"], row["y"], row["x"], row["y"]))
-    return idx
-
-# Computation of skyline using BBS algorithm with R tree
-
-def skyline_bbs(df):
-    df = df.reset_index(drop=True)
-    rtree_idx = create_rtree(df)
-    skyline = []  # stores the final skyline points
-   
-
-    for i in rtree_idx.intersection((0, 0, float('inf'), float('inf'))):
-        p = df.loc[df.index[i]]  
-        dominated = False
-        for s in skyline:
-            
-            # Checking if point p is dominated by skyline points
-            if is_dominated(p, s):
-                dominated = True
                 break
-        if not dominated:
-            
-            # Removing any skyline point when they are dominated by point p
-            
-            skyline = [s for s in skyline if not is_dominated(s, p)]  
-            
-            # Adding point p to skyline
-            skyline.append(p)
-            
 
+        # Adding the point to skyline if it is not dominated
+        if not dominated:
+            skyline.append(p)
     return pd.DataFrame(skyline)
 
-# IMPLEMENTATION OF BBS WITH DIVIDE-AND-CONQUER 
+# IMPLEMENTATION USING BRANCH AND BOUND SKYLINE
+
+# Computing skyline using BBS 
+# Sorting points by cost and keeping only those with increasing size values
+def skyline_bbs(df):
+    # Sorting the data by cost in ascending order
+    sorted_df = df.sort_values(by="x")
+
+    # Initializing the skyline list to store optimal points
+    skyline = []
+
+    # Initializing max_y to track the largest size seen so far
+    max_y = -1
+
+    # Iterating through sorted data
+    for _, row in sorted_df.iterrows():
+        # Keeping point if its size is greater than max_y
+        if row["y"] > max_y:
+            skyline.append(row)
+            max_y = row["y"]
+    return pd.DataFrame(skyline)
 
 
-# The dataset is divided into two by using the value of x and then Branch and Bound Skyline(BBS) is applied on each of them.
+# IMPLEMENTATION USING BBS WITH DIVIDE AND CONQUER
 
-
-
-
+# Computing skyline using BBS with Divide-and-Conquer
+# Splitting dataset and combining the skyline results after applying BBS on each half
 def skyline_bbs_divide_and_conquer(df):
-    
-    # Median for splitting purpose
-    mid_x = df["x"].median()
-    
-    # One half
-    left_df = df[df["x"] <= mid_x]
-    
-    # Next half
-    right_df = df[df["x"] > mid_x]
-    
-    # BBS application on the right
-    
+    # Finding the median of cost to divide the dataset
+    median_x = df["x"].median()
+
+    # Dividing dataset into left and right halves based on the median cost value
+    left_df = df[df["x"] <= median_x]
+    right_df = df[df["x"] > median_x]
+
+    # Applying BBS algorithm on left half
+    left_skyline = skyline_bbs(left_df)
+
+    # Applying BBS algorithm on right half
     right_skyline = skyline_bbs(right_df)
-    
-    # BBS application on the left
-    
-    left_skyline = skyline_bbs(left_df)  
-      
-    # Combining both the skylines
-    
+
+    # Combining the two skylines obtained from left and right halves
     combined = pd.concat([left_skyline, right_skyline])
     final_skyline = []
-    
-    # Checking for dominance of the points
 
-    for i, p in combined.iterrows():  
+    # Iterating through combined results to find non-dominated points
+    for i, p in combined.iterrows():
+        # Assuming the point is not dominated initially
         dominated = False
+
+        # Checking if the point is dominated by any other point in the combined result
         for j, q in combined.iterrows():
             if i != j and is_dominated(p, q):
                 dominated = True
                 break
+
+        # Adding to final skyline if not dominated
         if not dominated:
             final_skyline.append(p)
 
     return pd.DataFrame(final_skyline)
 
-
-
-# CALCULATION OF THE COMPUTATION TIME AND RESULTS FOR ALL ALGORITHMS
-
+# Storing the results and execution time of each method
 results = []
 
-
-# Running Sequential Scan and noting the time
-
+# Running Sequential Scan and storing the result and time taken
 start = time.time()
 sky_seq = skyline_sequential(df)
 results.append(("Sequential Scan", sky_seq, time.time() - start))
 
-# Running BBS and noting the time
+# Running BBS and storing the result and time taken
 start = time.time()
 sky_bbs = skyline_bbs(df)
 results.append(("BBS", sky_bbs, time.time() - start))
 
-# Running BBS with Divide-and-Conquer and noting the time
+# Running BBS with Divide-and-Conquer and storing the result and time taken
 start = time.time()
 sky_bbs_dc = skyline_bbs_divide_and_conquer(df)
 results.append(("BBS with Divide-and-Conquer", sky_bbs_dc, time.time() - start))
 
-
-# STORING THE REQUIRED OUTPUTS INTO THE TEXT FILE 
-
-with open("Results_for_SkylineSearch.txt", "w") as f:
+# Writing the skyline results and execution times to an output text file
+# Opening the file in write mode
+with open("Result_of_SkylineSearch.txt", "w") as f:
+    # Iterating through each algorithm's results
     for method, skyline_df, exec_time in results:
+        # Writing the algorithm name
         f.write(f"=== {method} ===\n")
+
+        # Writing the execution time
         f.write(f"Execution Time: {exec_time:.4f} seconds\n")
+
+        # Writing column headers
         f.write("ID\tX (Cost)\tY (Size)\n")
+
+        # Writing each point in the skyline
         for _, row in skyline_df.iterrows():
             f.write(f"{int(row['id'])}\t{row['x']:.2f}\t{row['y']:.2f}\n")
+
+        # Adding a newline for separation
         f.write("\n")
 
-print("Skyline Search Completed.")
+# Indicating completion of skyline search
+print("Completion of Skyline Search")
+
 
 
