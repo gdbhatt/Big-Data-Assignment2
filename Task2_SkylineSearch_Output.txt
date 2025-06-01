@@ -1,5 +1,5 @@
 === Sequential Scan ===
-Execution Time: 0.9137 seconds
+Execution Time: 0.9191 seconds
 ID	X (Cost)	Y (Size)
 14825	100.00	331.19
 50171	100.01	424.06
@@ -11,7 +11,7 @@ ID	X (Cost)	Y (Size)
 242162	124.91	499.98
 
 === BBS ===
-Execution Time: 0.0920 seconds
+Execution Time: 0.1038 seconds
 ID	X (Cost)	Y (Size)
 105741	100.51	499.92
 14825	100.00	331.19
@@ -23,7 +23,7 @@ ID	X (Cost)	Y (Size)
 88124	412.94	500.00
 
 === BBS with Divide-and-Conquer ===
-Execution Time: 0.1312 seconds
+Execution Time: 0.1517 seconds
 ID	X (Cost)	Y (Size)
 105741	100.51	499.92
 14825	100.00	331.19
